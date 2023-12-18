@@ -2,8 +2,6 @@ package com.ttingle.twitterclone.model;
 
 import jakarta.persistence.*;
 
-import java.util.UUID;
-
 @Entity
 @Table (name = "users")
 public class User {
@@ -11,13 +9,10 @@ public class User {
     @Id
     @GeneratedValue
     @Column(name = "user_id")
-    private UUID userID;
+    private Long userID;
 
-    @Column(name = "first_name")
-    private String firstName;
-
-    @Column(name = "last_name")
-    private String lastName;
+    @Column(name = "username")
+    private String username;
 
     @Column(name = "email_address")
     private String emailAddress;
@@ -25,28 +20,38 @@ public class User {
     @Column(name = "password")
     private String password;
 
-    public UUID getUserID() {
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    private Role role;
+
+    public User(){
+
+    }
+
+    public User(String username, String emailAddress, String password) {
+        this.username = username;
+        this.emailAddress = emailAddress;
+        this.password = password;
+        this.role = Role.ROLE_USER;
+    }
+
+
+    //Setters and Getters
+
+    public Long getUserID() {
         return userID;
     }
 
-    public void setUserID(UUID userID) {
+    public void setUserID(Long userID) {
         this.userID = userID;
     }
 
-    public String getFirstName() {
-        return firstName;
+    public String getUsername() {
+        return username;
     }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getEmailAddress() {
@@ -63,5 +68,13 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }
