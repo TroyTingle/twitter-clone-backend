@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -33,16 +34,21 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest loginRequest){
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password));
+        try{
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password));
 
-        UserDetails userDetails = userService.loadUserByUsername(loginRequest.username);
-        String token = jwtTokenUtil.generateToken(userDetails);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("token", token);
-        response.put("type", "Bearer");
-        return new ResponseEntity<>(response, HttpStatus.OK);
+            UserDetails userDetails = userService.loadUserByUsername(loginRequest.username);
+            String token = jwtTokenUtil.generateToken(userDetails);
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            response.put("type", "Bearer");
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch(AuthenticationException authenticationException){
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Invalid Login Credentials");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        }
     }
 
     @PutMapping("/signup")
