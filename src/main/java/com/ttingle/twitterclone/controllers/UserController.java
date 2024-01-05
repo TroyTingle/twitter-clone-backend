@@ -5,10 +5,7 @@ import com.ttingle.twitterclone.model.User;
 import com.ttingle.twitterclone.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/user")
@@ -21,13 +18,9 @@ public class UserController {
     }
 
 
-    @GetMapping("/{user_id}")
-    public ResponseEntity<User> getUserByID(@PathVariable Long user_id) throws UserNotFoundException {
-        User user = userService.findByID(user_id);
+    @GetMapping("/{username}")
+    public ResponseEntity<User> getUserByID(@PathVariable String username) throws UserNotFoundException {
+        User user = userService.findByUsername(username);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
-
-
-
-
 }

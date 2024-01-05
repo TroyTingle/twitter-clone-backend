@@ -16,12 +16,18 @@ public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+
+
     public UserService(UserRepository userRepository){
         this.userRepository = userRepository;
     }
 
     public User findByID (Long user_id) throws UserNotFoundException {
         return userRepository.findById(user_id).orElseThrow(() -> new UserNotFoundException(user_id.toString()));
+    }
+
+    public User findByUsername (String username) throws UserNotFoundException{
+        return userRepository.findByUsername(username).orElseThrow(() -> new UserNotFoundException(username));
     }
 
     public boolean existsByUsername(String username){
@@ -39,6 +45,5 @@ public class UserService implements UserDetailsService {
         authorities.add((GrantedAuthority) () -> user.getRole().name());
 
         return new org.springframework.security.core.userdetails.User(user.getUsername(), user.getPassword(), authorities);
-
     }
 }

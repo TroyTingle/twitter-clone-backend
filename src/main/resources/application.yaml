@@ -11,4 +11,4 @@ spring:
     password: password
     driverClassName: org.postgresql.Driver
 jwt:
-  expiration: 100000
+  expiration: 1200000

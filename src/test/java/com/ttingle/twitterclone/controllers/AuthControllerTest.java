@@ -1,6 +1,9 @@
 package com.ttingle.twitterclone.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ttingle.twitterclone.dto.UpdatePasswordRequest;
+import com.ttingle.twitterclone.exceptions.UserNotFoundException;
+import com.ttingle.twitterclone.model.User;
 import com.ttingle.twitterclone.services.UserService;
 import com.ttingle.twitterclone.util.JwtTokenUtil;
 import org.junit.jupiter.api.Test;
@@ -8,7 +11,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,9 +24,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,7 +52,7 @@ class AuthControllerTest {
     private AuthController authController;
 
     @Test
-    void login_ValidCredentials_ReturnsToken() throws Exception {
+    void loginValidCredentialsReturnsToken() throws Exception {
         // Mocking input data
         AuthController.LoginRequest loginRequest = new AuthController.LoginRequest("validUsername", "validPassword");
         UserDetails userDetails = mock(UserDetails.class);
@@ -72,7 +78,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void login_InvalidCredentials_ReturnsUnauthorized() throws Exception {
+    void loginInvalidCredentialsReturnsUnauthorized() throws Exception {
         // Mocking input data
         AuthController.LoginRequest loginRequest = new AuthController.LoginRequest("invalidUsername", "invalidPassword");
 
@@ -95,7 +101,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void signup_NewUser_ReturnsOk() throws Exception {
+    void signupNewUserReturnsOk() throws Exception {
         // Mocking input data
         AuthController.SignupRequest signupRequest = new AuthController.SignupRequest("test@email.com", "newUser", "password");
 
@@ -117,7 +123,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void signup_ExistingUser_ReturnsConflict() throws Exception {
+    void signupExistingUserReturnsConflict() throws Exception {
         // Mocking input data
         AuthController.SignupRequest signupRequest = new AuthController.SignupRequest("test@email.com", "existingUser", "password");
 
@@ -135,6 +141,66 @@ class AuthControllerTest {
         // Asserting the response
         result.andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Username already exists"));
+    }
+
+    @Test
+    void updatePasswordReturnsOk() throws UserNotFoundException{
+        String username = "testUser";
+        UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
+        User user = new User(username, "test@email.com", "oldPassword");
+
+        when(userService.findByUsername(username)).thenReturn(user);
+        when(passwordEncoder.matches(request.getOldPassword(), user.getPassword())).thenReturn(true);
+
+        ResponseEntity<String> response = authController.updatePassword(username, request);
+
+        verify(userService, times(1)).saveUser(any(User.class));
+        verify(passwordEncoder, times(1)).encode(request.getNewPassword());
+
+        assertAll(
+                () -> assertEquals(HttpStatus.OK, response.getStatusCode()),
+                () -> assertEquals("Password updated successfully", response.getBody())
+        );
+    }
+
+    @Test
+    void updatePasswordOldPasswordMismatchReturnsUnauthorized() throws UserNotFoundException {
+        String username = "testUser";
+        UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
+        User user = new User(username,"test@email.com", "differentPassword");
+
+        when(userService.findByUsername(username)).thenReturn(user);
+        when(passwordEncoder.matches(request.getOldPassword(), user.getPassword())).thenReturn(false);
+
+        ResponseEntity<String> response = authController.updatePassword(username, request);
+
+        assertAll(
+                () -> assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()),
+                () -> assertEquals("Old password does not match", response.getBody())
+        );
+
+        verify(userService, never()).saveUser(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
+    }
+
+    @Test
+    void updatePasswordUserNotFoundReturnsNotFound() throws UserNotFoundException {
+        String username = "nonexistentUser";
+
+        UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
+
+        when(userService.findByUsername(username)).thenThrow(UserNotFoundException.class);
+
+        ResponseEntity<String> response = authController.updatePassword(username, request);
+
+        assertAll(
+                () -> assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode()),
+                () -> assertTrue(response.getBody().contains("No user with username:"))
+        );
+
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
+        verify(userService, never()).saveUser(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     // Utility method to convert an object to a JSON string
