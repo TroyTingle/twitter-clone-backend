@@ -1,6 +1,9 @@
 package com.ttingle.twitterclone.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @Entity
 @Table (name = "users")
@@ -17,6 +20,9 @@ public class User {
     @Column(name = "email_address")
     private String emailAddress;
 
+    @NotBlank
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    @JsonIgnore
     @Column(name = "password")
     private String password;
 
