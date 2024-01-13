@@ -1,5 +1,6 @@
 package com.ttingle.twitterclone.controllers;
 
+import com.ttingle.twitterclone.dto.LoginRequest;
 import com.ttingle.twitterclone.dto.UpdatePasswordRequest;
 import com.ttingle.twitterclone.exceptions.UserNotFoundException;
 import com.ttingle.twitterclone.model.User;
@@ -12,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -39,9 +41,9 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest loginRequest){
         try{
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.username(), loginRequest.password));
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
-            UserDetails userDetails = userService.loadUserByUsername(loginRequest.username);
+            UserDetails userDetails = userService.loadUserByUsername(loginRequest.getUsername());
             String token = jwtTokenUtil.generateToken(userDetails);
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
@@ -75,14 +77,19 @@ public class AuthController {
 
     @PutMapping("/{username}/update-password")
     public ResponseEntity<String> updatePassword(@PathVariable String username,
-                                                 @Valid @RequestBody UpdatePasswordRequest updatePasswordRequest) throws UserNotFoundException {
+                                                 @Valid @RequestBody UpdatePasswordRequest updatePasswordRequest, @AuthenticationPrincipal UserDetails userDetails) {
+
+        //Checks the request user and supplied username are the same
+        if (!username.equals(userDetails.getUsername())) {
+            return new ResponseEntity<>("Unauthorized Request", HttpStatus.FORBIDDEN);
+        }
 
         try{
             User user = userService.findByUsername(username);
 
             //Check old password matches the one in the database
             if (!passwordEncoder.matches(updatePasswordRequest.getOldPassword(), user.getPassword())){
-                return new ResponseEntity<>("Old password does not match", HttpStatus.UNAUTHORIZED);
+                return new ResponseEntity<>("Old password does not match", HttpStatus.FORBIDDEN);
             }
 
             //Save new password to the database
@@ -96,7 +103,6 @@ public class AuthController {
         }
     }
 
-    public record LoginRequest(String username, String password){}
     public record SignupRequest(String emailAddress, String username, String password){}
 
 }

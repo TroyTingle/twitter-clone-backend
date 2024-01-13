@@ -1,6 +1,7 @@
 package com.ttingle.twitterclone.services;
 
 import com.ttingle.twitterclone.dto.CreatePostRequest;
+import com.ttingle.twitterclone.dto.PostDto;
 import com.ttingle.twitterclone.exceptions.UserNotFoundException;
 import com.ttingle.twitterclone.model.Post;
 import com.ttingle.twitterclone.model.User;
@@ -33,8 +34,11 @@ public class PostService {
         return new ResponseEntity<>("Post saved successfully", HttpStatus.OK);
     }
 
-    public ResponseEntity<List<Post>> getAllPosts(){
-        return new ResponseEntity<>(postRepository.findAll(), HttpStatus.OK);
+    public ResponseEntity<List<PostDto>> getAllPosts(){
+        List<PostDto> posts = postRepository.findAll().stream()
+                .map(post -> new PostDto(post.getPostId(), post.getPostContent(), post.getPostUser().getUsername()))
+                .toList();
+        return new ResponseEntity<>(posts, HttpStatus.OK);
     }
 
 }

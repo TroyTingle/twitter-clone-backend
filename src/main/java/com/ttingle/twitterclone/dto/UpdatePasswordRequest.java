@@ -12,7 +12,9 @@ public class UpdatePasswordRequest {
     @Size(min = 8, message = "New password must be at least 8 characters long")
     private String newPassword;
 
+
     //Default constructor for deserialization
+    @SuppressWarnings("unused")
     public UpdatePasswordRequest() {
     }
     public UpdatePasswordRequest(String oldPassword, String newPassword) {

@@ -2,11 +2,14 @@ package com.ttingle.twitterclone.controllers;
 
 
 import com.ttingle.twitterclone.dto.CreatePostRequest;
+import com.ttingle.twitterclone.dto.PostDto;
 import com.ttingle.twitterclone.exceptions.UserNotFoundException;
-import com.ttingle.twitterclone.model.Post;
 import com.ttingle.twitterclone.services.PostService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,12 +25,18 @@ public class PostController {
     }
 
     @PostMapping("/create-post")
-    public ResponseEntity<String> createNewPost(@Valid @RequestBody CreatePostRequest createPostRequest) throws UserNotFoundException {
+    public ResponseEntity<String> createNewPost(@Valid @RequestBody CreatePostRequest createPostRequest, @AuthenticationPrincipal UserDetails userDetails) throws UserNotFoundException {
+
+        String username = userDetails.getUsername();
+        if (!username.equals(createPostRequest.getPostUser())) {
+            return new ResponseEntity<>("Unauthorized access", HttpStatus.FORBIDDEN);
+        }
+
         return postService.createPost(createPostRequest);
     }
 
     @GetMapping("/all-posts")
-    public ResponseEntity<List<Post>> getAllPosts(){
+    public ResponseEntity<List<PostDto>> getAllPosts(){
         return postService.getAllPosts();
     }
 

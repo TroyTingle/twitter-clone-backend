@@ -13,12 +13,8 @@ public class CreatePostRequest {
     private String postContent;
 
     //Constructors
+    @SuppressWarnings("unused")
     public CreatePostRequest() {}
-
-    public CreatePostRequest(String postUserId, String postContent) {
-        this.postUser = postUserId;
-        this.postContent = postContent;
-    }
 
     //Getters
     public String getPostUser() {

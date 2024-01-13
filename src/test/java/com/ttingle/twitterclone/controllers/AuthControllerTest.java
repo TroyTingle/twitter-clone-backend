@@ -1,6 +1,7 @@
 package com.ttingle.twitterclone.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ttingle.twitterclone.dto.LoginRequest;
 import com.ttingle.twitterclone.dto.UpdatePasswordRequest;
 import com.ttingle.twitterclone.exceptions.UserNotFoundException;
 import com.ttingle.twitterclone.model.User;
@@ -24,6 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+
+import java.util.ArrayList;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,7 +58,7 @@ class AuthControllerTest {
     @Test
     void loginValidCredentialsReturnsToken() throws Exception {
         // Mocking input data
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest("validUsername", "validPassword");
+        LoginRequest loginRequest = new LoginRequest("validUsername", "validPassword");
         UserDetails userDetails = mock(UserDetails.class);
         Authentication authentication = mock(Authentication.class);
 
@@ -80,7 +84,7 @@ class AuthControllerTest {
     @Test
     void loginInvalidCredentialsReturnsUnauthorized() throws Exception {
         // Mocking input data
-        AuthController.LoginRequest loginRequest = new AuthController.LoginRequest("invalidUsername", "invalidPassword");
+        LoginRequest loginRequest = new LoginRequest("validUsername", "validPassword");
 
         // Mocking authenticationManager behavior to throw AuthenticationException
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
@@ -148,11 +152,12 @@ class AuthControllerTest {
         String username = "testUser";
         UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
         User user = new User(username, "test@email.com", "oldPassword");
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(username, "password", new ArrayList<>(Collections.emptyList()));
 
         when(userService.findByUsername(username)).thenReturn(user);
         when(passwordEncoder.matches(request.getOldPassword(), user.getPassword())).thenReturn(true);
 
-        ResponseEntity<String> response = authController.updatePassword(username, request);
+        ResponseEntity<String> response = authController.updatePassword(username, request, userDetails);
 
         verify(userService, times(1)).saveUser(any(User.class));
         verify(passwordEncoder, times(1)).encode(request.getNewPassword());
@@ -168,15 +173,35 @@ class AuthControllerTest {
         String username = "testUser";
         UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
         User user = new User(username,"test@email.com", "differentPassword");
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(username, "password", new ArrayList<>(Collections.emptyList()));
 
         when(userService.findByUsername(username)).thenReturn(user);
         when(passwordEncoder.matches(request.getOldPassword(), user.getPassword())).thenReturn(false);
 
-        ResponseEntity<String> response = authController.updatePassword(username, request);
+
+        ResponseEntity<String> response = authController.updatePassword(username, request, userDetails);
 
         assertAll(
-                () -> assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode()),
+                () -> assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode()),
                 () -> assertEquals("Old password does not match", response.getBody())
+        );
+
+        verify(userService, never()).saveUser(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
+    }
+
+    @Test
+    void updatePasswordUnauthorizedUserReturnsUnauthorized() throws UserNotFoundException {
+        String username = "testUser";
+        UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
+        User user = new User(username,"test@email.com", "differentPassword");
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User("testUser2", "password", new ArrayList<>(Collections.emptyList()));
+
+        ResponseEntity<String> response = authController.updatePassword(username, request, userDetails);
+
+        assertAll(
+                () -> assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode()),
+                () -> assertEquals("Unauthorized Request", response.getBody())
         );
 
         verify(userService, never()).saveUser(any(User.class));
@@ -186,12 +211,12 @@ class AuthControllerTest {
     @Test
     void updatePasswordUserNotFoundReturnsNotFound() throws UserNotFoundException {
         String username = "nonexistentUser";
-
         UpdatePasswordRequest request = new UpdatePasswordRequest("oldPassword", "newPassword");
+        UserDetails userDetails = new org.springframework.security.core.userdetails.User(username, "password", new ArrayList<>(Collections.emptyList()));
 
         when(userService.findByUsername(username)).thenThrow(UserNotFoundException.class);
 
-        ResponseEntity<String> response = authController.updatePassword(username, request);
+        ResponseEntity<String> response = authController.updatePassword(username, request, userDetails);
 
         assertAll(
                 () -> assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode()),
