@@ -2,18 +2,20 @@ package com.ttingle.twitterclone.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.function.Function;
 
 @Component
 public class JwtTokenUtil {
 
-    private final SecretKey SECRET_KEY = Jwts.SIG.HS256.key().build();
+    @Value("${jwt.secret}")
+    private String secretKey;
 
     @Value("${jwt.expiration}")
     private Long expiration;
@@ -23,7 +25,7 @@ public class JwtTokenUtil {
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(SECRET_KEY)
+                .signWith(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)))
                 .compact();
     }
 
@@ -46,7 +48,7 @@ public class JwtTokenUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser().verifyWith(SECRET_KEY).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8))).build().parseSignedClaims(token).getPayload();
     }
 
     private Boolean isTokenExpired(String token) {
